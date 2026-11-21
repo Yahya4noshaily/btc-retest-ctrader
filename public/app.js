@@ -1,4 +1,4 @@
-import {analyse,closedBars} from './engine.js'
+import {analyse,closedBars,modes} from './engine.js'
 import {connect} from './feed.js'
 const el = id => document.getElementById(id)
 const write = (id,value) => {el(id).textContent = value}
@@ -15,6 +15,7 @@ function reset() {
   feed?.close()
   feed=null
   clearInterval(interval)
+  interval=null
   active=false
   symbol=null
   lastBar=0
@@ -142,7 +143,8 @@ async function monitor() {
         if(!m1.length || !m5.length || m1.at(-1).t!==closed-60000 || m5.at(-1).t!==Math.floor(closed/300000)*300000-300000){
           write('signal','بانتظار اكتمال الشموع');write('reason','لم تصل آخر شمعة مغلقة من الوسيط.');return
         }
-        const s=analyse(m1,m5,10**-digits,el('mode').value)
+        const profile=el('mode').value
+        const s=analyse(m1,m5,10**-digits,profile)
         write('trend',s.trend>0?'صاعد':s.trend<0?'هابط':'عرضي')
         write('stamp','آخر إغلاق · '+time(closed))
         const key=[account,found.symbolId,s.t].join('/')
@@ -156,9 +158,9 @@ async function monitor() {
           const buy=s.trend>0,entry=buy?quote.ask:quote.bid
           if ((buy?quote.bid<=s.stop:quote.ask>=s.stop)){write('signal','انتهت صلاحية الفرصة');write('reason','تجاوز السعر وقف إعادة الاختبار.');return}
           seen.add(key);deadline=closed+12000
-          const side=buy?'شراء':'بيع', summary=side+' · '+fmt(entry)+' | الوقف '+fmt(s.stop)
+          const side=buy?'شراء':'بيع', summary=modes[profile]+' · '+side+' · '+fmt(entry)+' | الوقف '+fmt(s.stop)
           el('signal').className=buy?'buy':'sell'
-          write('signal',side+' BTCUSD');write('reason','سعر التنبيه '+fmt(entry)+' · وقف إعادة الاختبار '+fmt(s.stop))
+          write('signal',side+' BTCUSD · '+modes[profile]);write('reason','سعر التنبيه '+fmt(entry)+' · وقف إعادة الاختبار '+fmt(s.stop))
           const item=document.createElement('li');item.textContent=time(closed)+' · '+summary
           if(!el('history').dataset.started){el('history').replaceChildren();el('history').dataset.started='1'}
           el('history').prepend(item)
@@ -177,6 +179,7 @@ async function monitor() {
 }
 el('monitor').onclick=()=>{if('Notification' in window && Notification.permission==='default') Notification.requestPermission().catch(()=>{});void monitor()}
 
+export function localMonitorRunning(){return interval!=null}
 export function cloudCredentials(){
   const account=Number(el('accounts').value)
   if (!account || !feed) return null

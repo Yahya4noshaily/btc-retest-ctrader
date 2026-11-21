@@ -29,8 +29,17 @@ export async function scan(c,due){
     await request(2127,{symbolId:[c.symbolId],subscribeToSpotTimestamp:true})
     await sleep(due+800-Date.now())
     const bars=async period=>closedBars((await request(2137,{symbolId:c.symbolId,period,count:125,fromTimestamp:due-period*60000*190,toTimestamp:due-1})).trendbar??[],period,due)
-    const [m1,m5]=await Promise.all([bars(1),bars(5)])
-    if(m1.at(-1)?.t!==due-60000 || m5.at(-1)?.t!==Math.floor(due/300000)*300000-300000)return {note:'بانتظار شموع الوسيط'}
+    let [m1,m5]=await Promise.all([bars(1),bars(5)])
+    const lastFive=Math.floor(due/300000)*300000-300000
+    // The broker can publish a closed candle a few seconds after the boundary.
+    for(let retry=0;retry<4 && Date.now()<due+9500;retry++){
+      const missingOne=m1.at(-1)?.t!==due-60000, missingFive=m5.at(-1)?.t!==lastFive
+      if(!missingOne && !missingFive)break
+      await sleep(1100)
+      if(Date.now()>=due+12000)break
+      ;[m1,m5]=await Promise.all([missingOne?bars(1):m1,missingFive?bars(5):m5])
+    }
+    if(m1.at(-1)?.t!==due-60000 || m5.at(-1)?.t!==lastFive)return {note:'بانتظار شموع الوسيط'}
     const s=analyse(m1,m5,10**-c.digits,c.mode)
     if(s.phase!=='signal')return {note:({trend:'بانتظار اتجاه واضح',break:'مراقبة الاختراق',retest:'بانتظار إعادة الاختبار'})[s.phase]}
     const end=due+12000

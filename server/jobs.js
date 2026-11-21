@@ -1,4 +1,6 @@
 import {send} from '@vercel/queue'
+import {del} from '@vercel/blob'
+import {connect} from '../public/feed.js'
 import {read,write,pulse} from './state.js'
 import {scan,message,telegram} from './market.js'
 export async function enqueue(id,revision,due){
@@ -22,7 +24,22 @@ async function renew(id,c){
   return current.value
 }
 export async function consume({id,revision,due,probe}){
-  if(probe){await pulse(id,{probe,at:Date.now()});return}
+  if(probe){
+    // Exercise the same private storage and TLS paths with disposable, non-account data.
+    let storage=false,network=false
+    try{
+      await write(id,{probe})
+      storage=(await read(id,true)).value?.probe===probe
+      await del('monitors/'+id)
+    }catch{}
+    try{
+      const ws=await connect(true,()=>{},()=>{})
+      ws.close()
+      network=true
+    }catch{}
+    await pulse(id,{probe,storage,network,at:Date.now()})
+    return
+  }
   let {value:c}=await read(id)
   if(!c?.enabled || c.revision!==revision)return
   await enqueue(id,revision,Math.max(due+60000,(Math.floor(Date.now()/60000)+1)*60000))

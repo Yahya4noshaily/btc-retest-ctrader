@@ -32,7 +32,7 @@ export default async function handler(req,res){
       const sig=createHmac('sha256',Buffer.from(process.env.MONITOR_KEY,'base64')).update('probe/'+b.ts).digest('hex')
       if(!Number.isSafeInteger(b.ts)||Math.abs(Date.now()-b.ts)>120000||typeof b.sig!=='string'||!/^[a-f0-9]{64}$/.test(b.sig)||!timingSafeEqual(Buffer.from(sig),Buffer.from(b.sig)))return res.status(403).end()
       const probeId='check-'+b.ts
-      if(b.check)return res.json({processed:(await heartbeat(probeId))?.probe===b.ts})
+      if(b.check){const p=await heartbeat(probeId);return res.json({processed:p?.probe===b.ts,storage:p?.storage,network:p?.network})}
       await send('btc-monitor-v1',{id:probeId,probe:b.ts},{region:'iad1',retentionSeconds:120,idempotencyKey:probeId})
       return res.json({accepted:true})
     }
@@ -64,14 +64,11 @@ export default async function handler(req,res){
       await telegram(tg,'getChat')
     }
     const state={...old,...b.verified,enabled:true,revision:randomUUID(),started:Date.now(),mode:b.mode,tgOn:b.tgOn===true,tg,history:old?.history||[]}
+    // Leave enough time to commit the generation before its first consumer can run.
+    const due=Math.ceil((Date.now()+20000)/60000)*60000
+    await enqueue(id,state.revision,due)
     await write(id,state,etag)
     res.setHeader('Set-Cookie',cookie(id))
-    try {await enqueue(id,state.revision,(Math.floor(Date.now()/60000)+1)*60000)}
-    catch{
-      const current=await read(id,true)
-      if(current.value?.revision===state.revision)await write(id,{...state,enabled:false},current.etag)
-      invalid('تعذر جدولة المراقبة السحابية. أعد تشغيلها من الموقع.')
-    }
     return res.json(await status(id))
   }catch(err){
     const safe=err.expose||/^(cTrader · [A-Z_]+$|تيليجرام رفض|رمز BTCUSD|تعذر فتح اتصال cTrader|تعذر تحديد دقة)/.test(err.message)

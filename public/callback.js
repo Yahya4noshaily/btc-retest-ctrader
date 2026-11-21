@@ -1,7 +1,10 @@
 const query = new URLSearchParams(location.search)
 history.replaceState(null,'','/callback.html')
-if (window.opener) {
-  window.opener.postMessage({type:'ctrader-callback',code:query.get('code')},location.origin)
-  window.close()
+try {
+  sessionStorage.setItem('btc.auth.result',JSON.stringify({
+    code:query.get('code'),denied:query.get('error')==='access_denied'
+  }))
+  location.replace('/#authorization')
+} catch {
+  document.getElementById('message').textContent='تعذر استعادة جلسة التفويض. افتح صفحة المراقبة في Safari ثم أعد التفويض.'
 }
-document.getElementById('message').textContent = 'ارجع لصفحة المراقبة. إذا لم يكتمل الربط أعد فتح التفويض منها.'

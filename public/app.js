@@ -7,7 +7,7 @@ const time = n => new Date(n).toLocaleTimeString('ar-SA',{timeZone:'Asia/Riyadh'
 const feedback = value => write('feedback',value)
 const callback = location.origin + '/callback.html'
 write('callback',callback)
-let feed,epoch=0,popup,interval,symbol,quote={},lastBar=0,active=false,deadline=0
+let feed,epoch=0,interval,symbol,quote={},lastBar=0,active=false,deadline=0
 const seen = new Set()
 function reset() {
   epoch++
@@ -36,21 +36,38 @@ el('authorize').onclick = () => {
   if (!el('client').value.trim() || !el('secret').value.trim()) return feedback('أدخل معرّف التطبيق ومفتاحه أولًا.')
   const url = new URL('https://id.ctrader.com/my/settings/openapi/grantingaccess/')
   url.search = new URLSearchParams({client_id:el('client').value.trim(),redirect_uri:callback,scope:'accounts',product:'web'})
-  popup=window.open(url,'ctrader-access','popup,width=540,height=720')
-  feedback(popup?'أكمل الموافقة في نافذة cTrader.':'اسمح بالنوافذ المنبثقة ثم أعد التفويض.')
-}
-window.addEventListener('message',async e=>{
-  if (e.origin!==location.origin || !popup || e.source!==popup || e.data?.type!=='ctrader-callback') return
-  popup=null
-  if (!e.data.code) return feedback('لم يكتمل التفويض.')
   try {
-    const r=await fetch('/api/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client:el('client').value.trim(),secret:el('secret').value.trim(),code:e.data.code})})
+    sessionStorage.setItem('btc.auth.pending',JSON.stringify({
+      client:el('client').value.trim(), secret:el('secret').value.trim(),
+      env:el('env').value, expires:Date.now()+10*60*1000
+    }))
+    location.assign(url)
+  } catch {feedback('تعذر حفظ جلسة التفويض. افتح الموقع في Safari وأعد المحاولة.')}
+}
+async function resumeAuthorization() {
+  const returned=location.hash==='#authorization'
+  if (returned) history.replaceState(null,'','/')
+  try {
+    const pending=sessionStorage.getItem('btc.auth.pending')
+    const result=sessionStorage.getItem('btc.auth.result')
+    sessionStorage.removeItem('btc.auth.pending')
+    sessionStorage.removeItem('btc.auth.result')
+    if (!returned) return
+    const attempt=pending && JSON.parse(pending)
+    if (!attempt || Date.now()>=attempt.expires) throw new Error('انتهت جلسة الربط. اضغط تفويض الحساب لبدء جلسة جديدة.')
+    el('env').value=attempt.env
+    el('client').value=attempt.client
+    el('secret').value=attempt.secret
+    const reply=result && JSON.parse(result)
+    if (!reply?.code) throw new Error(reply?.denied?'تم إلغاء التفويض. يمكنك المحاولة من جديد.':'عاد cTrader دون رمز تفويض. أعد التفويض من هذه الصفحة.')
+    feedback('جاري إكمال تفويض الحساب…')
+    const r=await fetch('/api/exchange',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client:attempt.client,secret:attempt.secret,code:reply.code})})
     const data=await r.json()
-    if (!r.ok) throw new Error(data.error || 'تعذر إكمال التفويض')
+    if (!r.ok || !data.accessToken) throw new Error(data.error || 'تعذر إكمال التفويض')
     el('token').value=data.accessToken
     await list()
-  } catch(err){feedback(err.message)}
-})
+  } catch(err){if(returned){feedback(err.message);el('feedback').scrollIntoView({block:'center'})}}
+}
 function spot(p) {
   if (!symbol || String(p.symbolId)!==String(symbol.symbolId)) return
   const stamp = Number(p.timestamp)
@@ -79,7 +96,8 @@ async function list() {
     el('selection').hidden=false
     el('off').hidden=false
     write('badge','متصل بالمنصة')
-    feedback('اختر الحساب ثم ابدأ المراقبة.')
+    feedback('تم ربط الحساب. اختر الحساب ثم ابدأ المراقبة.')
+    el('selection').scrollIntoView({block:'center'})
   } catch(err){if(id===epoch){reset();feedback(err.message)}}
 }
 el('list').onclick=list
@@ -154,3 +172,5 @@ async function monitor() {
   }catch(err){if(id===epoch){reset();feedback(err.message)}}
 }
 el('monitor').onclick=()=>{if('Notification' in window && Notification.permission==='default') Notification.requestPermission().catch(()=>{});void monitor()}
+
+void resumeAuthorization()

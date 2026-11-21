@@ -11,6 +11,6 @@ export default async function handler(req,res) {
     const response = await fetch(url,{headers:{Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(9000)})
     const data = await response.json()
     if (!response.ok || !data.accessToken) return res.status(400).json({error:'فشل التفويض. تحقق من بيانات التطبيق ورابط التحويل.'})
-    return res.json({accessToken:data.accessToken})
+    return res.json({accessToken:data.accessToken,refreshToken:data.refreshToken,expiresIn:data.expiresIn})
   } catch {return res.status(502).json({error:'تعذر الوصول إلى خدمة التفويض'})}
 }

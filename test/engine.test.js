@@ -25,3 +25,13 @@ test('decode, sort, deduplicate and drop the forming candle',()=>{
  const bar={utcTimestampInMinutes:10,low:12345000,deltaOpen:20,deltaHigh:90,deltaClose:70}
  assert.deepEqual(closedBars([{...bar,utcTimestampInMinutes:11},bar,bar],1,11*60000),[{t:600000,low:123.45,open:123.4502,high:123.4509,close:123.4507}])
 })
+test('near retest is aggressive only; conservative requires directional close',()=>{
+ const near={...retest,low:111.2,open:112,high:114}
+ const bars=[...setup.slice(0,-1),near]
+ assert.equal(analyse(bars,trend,.01,'aggressive').phase,'signal')
+ assert.notEqual(analyse(bars,trend,.01,'balanced').phase,'signal')
+ const strict=[...setup.slice(0,-1),{...retest,open:112,high:113.1}]
+ assert.equal(analyse(strict,trend,.01,'conservative').phase,'signal')
+ assert.equal(analyse(mirror(strict),mirror(trend),.01,'conservative').phase,'signal')
+ assert.notEqual(analyse([...setup.slice(0,-1),retest],trend,.01,'conservative').phase,'signal')
+})

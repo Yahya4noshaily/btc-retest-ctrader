@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import vm from 'node:vm'
 import {readFileSync} from 'node:fs'
 
-const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8').replace(/^import .*$/gm,'')
+const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8').replace(/^import .*$/gm,'').replace(/^export /gm,'')
 const callback=readFileSync(new URL('../public/callback.js',import.meta.url),'utf8')
 function browser() {
   const items=new Map(),fields=new Map(), requests=[]

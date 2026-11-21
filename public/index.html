@@ -2,11 +2,20 @@
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مرقاب البيتكوين | BTC Retest</title><link rel="stylesheet" href="/style.css"></head>
 <body><header><strong><b aria-hidden="true">₿</b> مرقاب البيتكوين</strong><small dir="ltr">BTC / RETEST</small></header>
 <main><section class="intro"><small dir="ltr">BITCOIN · cTRADER</small><h1>الاختراق وإعادة الاختبار</h1><p>اتجاه الخمس دقائق وتأكيد الدخول على الدقيقة.</p></section>
+<section class="panel"><label>وضع الاستراتيجية<select id="mode"><option value="aggressive">هجومي</option><option value="balanced" selected>متوازن</option><option value="conservative">محافظ</option></select></label><small id="modeDesc"></small></section>
 <section class="panel"><div class="row"><h2>حالة الإشارة</h2><span id="badge">غير متصل</span></div><h3 id="signal" role="status">اربط حسابك للبدء</h3><p id="reason">يظهر التنبيه عند إغلاق شمعة إعادة الاختبار.</p><div class="stats"><div>اتجاه M5<strong id="trend">—</strong></div><div>سعر البيع Bid<strong id="bid">—</strong></div><div>سعر الشراء Ask<strong id="ask">—</strong></div></div><small id="stamp">بانتظار بيانات الوسيط</small></section>
-<section class="panel"><h2>ربط cTrader</h2><p>تُستخدم مفاتيح تطبيقك خلال هذه الجلسة. أبقِ الصفحة مفتوحة للمراقبة.</p>
+<section class="panel"><h2>ربط cTrader</h2><p>تُستخدم مفاتيح تطبيقك خلال هذه الجلسة. للمتابعة بعد إغلاق الصفحة فعّل المراقبة السحابية أدناه.</p>
 <div class="fields"><label>بيئة الحساب<select id="env"><option value="demo">تجريبي</option><option value="live">حقيقي</option></select></label><label>معرّف التطبيق<input id="client" dir="ltr" autocomplete="off" placeholder="Client ID"></label><label>مفتاح التطبيق<input id="secret" type="password" dir="ltr" autocomplete="off" placeholder="Client secret"></label></div>
 <details><summary>رابط التفويض وخيار الربط برمز وصول</summary><p>أضف العنوان التالي إلى Redirect URIs في تطبيق cTrader ثم اضغط «تفويض الحساب».</p><code id="callback"></code><label>إذا عندك Access Token للحساب، أدخله هنا واضغط «عرض الحسابات»<input id="token" dir="ltr" type="password" autocomplete="off"></label></details>
 <div class="actions"><button id="authorize">تفويض الحساب</button><button class="secondary" id="list">عرض الحسابات</button><button class="secondary" id="off" hidden>قطع الاتصال</button></div><p id="feedback" role="status"></p>
 <div id="selection" hidden><label>حساب التداول<select id="accounts"></select></label><button id="monitor">بدء المراقبة</button></div>
+</section><section class="panel"><h2>المراقبة السحابية وتيليجرام</h2>
+<p>اختر حساب التداول ثم شغّل المراقبة هنا لتستمر بعد إغلاق الموقع. تُحفظ بيانات الربط مشفّرة على الخادم.</p>
+<label><input type="checkbox" id="tgOn"> إرسال إشارات الدخول إلى تيليجرام</label>
+<div id="tgFields" hidden><p>افتح المحادثة مع بوتك واضغط Start. أدخل بياناته هنا مرة واحدة.</p>
+<label>رمز البوت Bot Token<input type="password" id="tgToken" autocomplete="off" dir="ltr"></label>
+<label>معرّف المحادثة Chat ID<input id="tgChat" autocomplete="off" dir="ltr"></label></div>
+<div class="actions"><button id="cloudSave">تشغيل المراقبة السحابية</button><button class="secondary" id="testTg" hidden>إرسال رسالة اختبار</button><button class="secondary" id="cloudOff" hidden>إيقاف المراقبة السحابية</button></div>
+<p id="cloudStatus" role="status">جاري التحقق من المراقبة السحابية…</p><small id="cloudTime"></small><p id="cloudFeedback" role="status"></p><ul id="cloudHistory"></ul>
 </section><section class="panel"><div class="row"><h2>سجل إشارات الجلسة</h2><small>توقيت الرياض</small></div><ul id="history"><li>لم تصدر إشارة في هذه الجلسة.</li></ul></section></main>
-<script type="module" src="/app.js?v=2"></script></body></html>
+<script type="module" src="/cloud.js"></script></body></html>

@@ -11,7 +11,8 @@ function direction(bars) {
   const l = Math.sign(lows[1].low - lows[0].low)
   return h === l ? h : 0
 }
-export function analyse(minutes, fives, tick = 0.01) {
+export const modes = Object.freeze({aggressive:'هجومي', balanced:'متوازن', conservative:'محافظ'})
+export function analyse(minutes, fives, tick = 0.01, mode = 'balanced') {
   let last = {trend:0, phase:'trend'}, pending
   const consumed = new Set()
   for (let i = 5; i < minutes.length; i++) {
@@ -24,7 +25,11 @@ export function analyse(minutes, fives, tick = 0.01) {
       const {side, level, start} = pending
       if (bar.t - start > 5 * 60000 || side * (bar.close - level) <= 0) pending = null
       else {
-        const touched = side > 0 ? bar.low <= level : bar.high >= level
+        const tolerance = mode === 'aggressive' ? 0.15 * (prev.high - prev.low) : 0
+        const touchesLevel = side > 0 ? bar.low <= level + tolerance : bar.high >= level - tolerance
+        const closePosition = side > 0 ? bar.close - bar.low : bar.high - bar.close
+        const strong = side * (bar.close - bar.open) > 0 && closePosition >= (bar.high - bar.low) * 0.7
+        const touched = touchesLevel && (mode !== 'conservative' || strong)
         if (touched) {
           last = {trend, phase:'signal', level, t:bar.t, close:bar.close,
             stop:side > 0 ? bar.low - tick : bar.high + tick}

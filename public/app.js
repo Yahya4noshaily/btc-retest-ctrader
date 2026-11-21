@@ -8,6 +8,7 @@ const feedback = value => write('feedback',value)
 const callback = location.origin + '/callback.html'
 write('callback',callback)
 let feed,epoch=0,interval,symbol,quote={},lastBar=0,active=false,deadline=0
+let refreshToken='', expiresAt=0
 const seen = new Set()
 function reset() {
   epoch++
@@ -31,6 +32,7 @@ function reset() {
   for (const id of ['bid','ask','trend']) write(id,'—')
 }
 el('off').onclick = () => {reset(); el('token').value=''; el('secret').value=''; feedback('تم قطع الاتصال')}
+el('token').oninput=()=>{refreshToken='';expiresAt=0}
 el('env').onchange = () => {reset(); feedback('اختر الحساب في البيئة الجديدة')}
 el('authorize').onclick = () => {
   if (!el('client').value.trim() || !el('secret').value.trim()) return feedback('أدخل معرّف التطبيق ومفتاحه أولًا.')
@@ -65,6 +67,8 @@ async function resumeAuthorization() {
     const data=await r.json()
     if (!r.ok || !data.accessToken) throw new Error(data.error || 'تعذر إكمال التفويض')
     el('token').value=data.accessToken
+    refreshToken=data.refreshToken || ''
+    expiresAt=Date.now()+Number(data.expiresIn || 0)*1000
     await list()
   } catch(err){if(returned){feedback(err.message);el('feedback').scrollIntoView({block:'center'})}}
 }
@@ -138,7 +142,7 @@ async function monitor() {
         if(!m1.length || !m5.length || m1.at(-1).t!==closed-60000 || m5.at(-1).t!==Math.floor(closed/300000)*300000-300000){
           write('signal','بانتظار اكتمال الشموع');write('reason','لم تصل آخر شمعة مغلقة من الوسيط.');return
         }
-        const s=analyse(m1,m5,10**-digits)
+        const s=analyse(m1,m5,10**-digits,el('mode').value)
         write('trend',s.trend>0?'صاعد':s.trend<0?'هابط':'عرضي')
         write('stamp','آخر إغلاق · '+time(closed))
         const key=[account,found.symbolId,s.t].join('/')
@@ -173,4 +177,9 @@ async function monitor() {
 }
 el('monitor').onclick=()=>{if('Notification' in window && Notification.permission==='default') Notification.requestPermission().catch(()=>{});void monitor()}
 
+export function cloudCredentials(){
+  const account=Number(el('accounts').value)
+  if (!account || !feed) return null
+  return {account,env:el('env').value,clientId:el('client').value.trim(),clientSecret:el('secret').value.trim(),accessToken:el('token').value.trim(),refreshToken,expiresAt}
+}
 void resumeAuthorization()
